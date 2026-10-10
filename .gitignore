@@ -1,0 +1,25 @@
+# Node
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Python
+.venv/
+backend/__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+
+# Environment
+.env
+.env.*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+
+# Logs
+npm-debug.log*
+
+# Keep model if required
+# backend/models/ecobot.pt

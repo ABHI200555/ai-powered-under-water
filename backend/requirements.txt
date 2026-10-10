@@ -1,0 +1,8 @@
+flask
+flask-cors
+gunicorn
+pillow
+ultralytics
+opencv-python
+numpy
+python-dotenv
