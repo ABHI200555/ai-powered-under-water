@@ -12,6 +12,7 @@ from ultralytics import YOLO
 import cv2
 import numpy as np
 from dotenv import load_dotenv
+from pymongo import MongoClient
 
 # Load environment variables
 load_dotenv()
@@ -20,8 +21,21 @@ app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
 # Load the YOLOv8 model
-MODEL_PATH = os.getenv("MODEL_PATH", "./models/ecobot.pt")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def resolve_model_path():
+    configured_path = os.getenv("MODEL_PATH", os.path.join("models", "ecobot.pt"))
+    if os.path.isabs(configured_path):
+        return configured_path
+    return os.path.abspath(os.path.join(BASE_DIR, configured_path))
+
+
+MODEL_PATH = resolve_model_path()
 model = None
+mongo_client = None
+db = None
+
 
 def load_model():
     global model
@@ -31,6 +45,25 @@ def load_model():
         return True
     except Exception as e:
         print(f"Error loading model: {e}")
+        return False
+
+
+def init_mongodb():
+    global mongo_client, db
+    mongo_uri = os.getenv("MONGODB_URI")
+    if not mongo_uri:
+        print("MongoDB URI not set. Skipping database connection.")
+        return False
+
+    try:
+        mongo_client = MongoClient(mongo_uri, serverSelectionTimeoutMS=5000)
+        db_name = os.getenv("DB_NAME", "eco_bot")
+        db = mongo_client[db_name]
+        db.command("ping")
+        print("MongoDB connected successfully.")
+        return True
+    except Exception as e:
+        print(f"MongoDB connection failed: {e}")
         return False
 
 # Extract GPS data from image EXIF metadata
@@ -133,6 +166,7 @@ def home():
     return jsonify({
         "status": "online",
         "model_loaded": model is not None,
+        "mongodb_connected": db is not None,
         "model_path": MODEL_PATH
     })
 
@@ -169,10 +203,9 @@ def detect():
 if __name__ == "__main__":
     # Load the model on startup
     load_model()
+    init_mongodb()
 
     debug_mode = os.getenv("DEBUG", "False").lower() in ("true", "1", "t")
-
-    # 👇 NEW: take PORT from env, default to 5000 for local
     port = int(os.environ.get("PORT", 5000))
 
     app.run(

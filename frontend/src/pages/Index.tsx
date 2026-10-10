@@ -9,7 +9,9 @@ import PageTransition from '@/components/PageTransition';
 import ImageUpload from '@/components/ImageUpload';
 import { cn } from '@/lib/utils';
 
-const API_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:5000";
+const API_URL = import.meta.env.VITE_API_BASE_URL || (
+  window.location.hostname === 'localhost' ? 'http://127.0.0.1:5000' : window.location.origin
+);
 
 const Index = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
