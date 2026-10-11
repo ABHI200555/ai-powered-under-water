@@ -4,10 +4,16 @@ import io
 import json
 import base64
 import uuid
+import threading
 from datetime import datetime
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from PIL import Image, ExifTags
+
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+os.environ.setdefault("MKL_NUM_THREADS", "1")
+
+import torch
 from ultralytics import YOLO
 import cv2
 import numpy as np
@@ -33,19 +39,28 @@ def resolve_model_path():
 
 MODEL_PATH = resolve_model_path()
 model = None
+model_load_lock = threading.Lock()
 mongo_client = None
 db = None
 
 
 def load_model():
     global model
-    try:
-        model = YOLO(MODEL_PATH)
-        print(f"Model loaded successfully from {MODEL_PATH}")
+    if model is not None:
         return True
-    except Exception as e:
-        print(f"Error loading model: {e}")
-        return False
+
+    with model_load_lock:
+        if model is not None:
+            return True
+
+        try:
+            torch.set_num_threads(1)
+            model = YOLO(MODEL_PATH)
+            print(f"Model loaded successfully from {MODEL_PATH}")
+            return True
+        except Exception as e:
+            print(f"Error loading model: {e}")
+            return False
 
 
 def init_mongodb():
@@ -108,7 +123,7 @@ def extract_gps(img):
 def process_image(image_bytes):
     try:
         # Open the image with PIL
-        img = Image.open(io.BytesIO(image_bytes))
+        img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
         
         # Extract GPS coordinates if available
         gps_coordinates = extract_gps(img)
@@ -117,7 +132,13 @@ def process_image(image_bytes):
         img_cv = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
         
         # Run inference with YOLOv8
-        results = model(img_cv)
+        results = model.predict(
+            img_cv,
+            device="cpu",
+            imgsz=416,
+            workers=0,
+            verbose=False,
+        )
         
         # Process results to get bounding boxes, confidence, etc.
         processed_result = results[0]
