@@ -9,9 +9,12 @@ import PageTransition from '@/components/PageTransition';
 import ImageUpload from '@/components/ImageUpload';
 import { cn } from '@/lib/utils';
 
-const API_URL = import.meta.env.VITE_API_BASE_URL || (
-  window.location.hostname === 'localhost' ? 'http://127.0.0.1:5000' : window.location.origin
-);
+const configuredApiUrl = import.meta.env.VITE_API_BASE_URL?.trim();
+const API_URL = configuredApiUrl
+  ? configuredApiUrl.replace(/\/+$/, '')
+  : import.meta.env.DEV
+    ? 'http://127.0.0.1:5000'
+    : '';
 
 const Index = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -36,6 +39,12 @@ const Index = () => {
     setIsSubmitting(true);
 
     try {
+      if (!API_URL) {
+        throw new Error(
+          'Detection service is not configured. Set VITE_API_BASE_URL to your deployed Flask backend URL and redeploy the frontend.'
+        );
+      }
+
       // Create form data to send to the backend
       const formData = new FormData();
       formData.append('image', selectedFile);
@@ -48,6 +57,11 @@ const Index = () => {
 
       
       if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error(
+            'Detection endpoint not found. Check that VITE_API_BASE_URL points to your Flask backend, not the frontend website.'
+          );
+        }
         throw new Error(`Server responded with ${response.status}`);
       }
       

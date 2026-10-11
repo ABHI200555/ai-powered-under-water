@@ -71,6 +71,12 @@ Then open your browser and go to `http://127.0.0.1:8000`
 
 ---
 
+## Deployment
+
+The frontend and Flask API must be deployed separately. In the Vercel project settings, set the production environment variable `VITE_API_BASE_URL` to the base URL of the deployed Flask backend (for example, `https://your-backend.onrender.com`, without `/api/detect`). Then redeploy the frontend so the new value is included in the build. The frontend will use `http://127.0.0.1:5000` automatically only during local development.
+
+---
+
 ## 🧑‍💻 How It Works
 
 1. **Image Upload**: Users upload underwater images via the web interface.
